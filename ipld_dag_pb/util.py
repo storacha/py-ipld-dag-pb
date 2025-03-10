@@ -101,7 +101,10 @@ def prepare(node: Union[BytesLike, str, dict]) -> PBNode:  # type: ignore[type-a
         if isinstance(links, list):
             pbn.links = []
             for l in links:
-                pbn.links.append(as_link(l))
+                if isinstance(l, PBLink):
+                    pbn.links.append(l)
+                else:
+                    pbn.links.append(as_link(l))
             pbn.links.sort(key=cmp_to_key(link_comparator))
         else:
             raise TypeError("Invalid DAG-PB form (links are not a list)")

@@ -1,6 +1,7 @@
 import pytest
 from multiformats import CID
 from ipld_dag_pb import decode, encode, prepare, PBNode
+from ipld_dag_pb.util import create_link, create_node
 
 
 def test_prepare_encode_an_empty_node() -> None:
@@ -107,3 +108,57 @@ def test_prepare_encode_node_with_links_and_sorting() -> None:
         "some link",
         "some other link",
     ]
+
+
+def test_create_node_with_data_and_links():
+    """Test creating a node with data and links"""
+    data = bytes([0, 1, 2, 3, 4])
+    cid1 = CID.decode("QmWDtUQj38YLW8v3q4A6LwPn4vYKEbuKWpgSm6bjKW6Xfe")
+    cid2 = CID.decode("bafyreifepiu23okq5zuyvyhsoiazv2icw2van3s7ko6d3ixl5jx2yj2yhu")
+
+    links = [
+        create_link(cid1, "link1", 100),
+        create_link(cid2, "link2", 200)
+    ]
+
+    node = create_node(data, links)
+    result = encode(node)
+    decoded = decode(result)
+
+    assert decoded.data == data
+    assert len(decoded.links) == 2
+    assert decoded.links[0].hash == cid1
+    assert decoded.links[0].name == "link1"
+    assert decoded.links[0].t_size == 100
+    assert decoded.links[1].hash == cid2
+    assert decoded.links[1].name == "link2"
+    assert decoded.links[1].t_size == 200
+
+
+def test_create_link():
+    """Test creating a link"""
+    cid = CID.decode("QmWDtUQj38YLW8v3q4A6LwPn4vYKEbuKWpgSm6bjKW6Xfe")
+    link = create_link(cid, "test-link", 1234)
+
+    assert link.hash == cid
+    assert link.name == "test-link"
+    assert link.t_size == 1234
+
+
+def test_bad_forms():
+    """Test validation failure with bad forms"""
+    # Missing hash
+    with pytest.raises(Exception):
+        encode(prepare({"links": [{"name": "missing-hash"}]}))
+
+    # Invalid data type
+    with pytest.raises(Exception):
+        encode(prepare({"data": 123}))  # not bytes-like
+
+    # Links not a list
+    with pytest.raises(Exception):
+        encode(prepare({"links": "not a list"}))
+
+    # Link is not a dict
+    with pytest.raises(Exception):
+        encode(prepare({"links": ["not a dict"]}))
