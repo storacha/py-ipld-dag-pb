@@ -1,4 +1,4 @@
-from typing import Final, Optional, Union
+from typing import Any, Final, Optional, Union
 from multiformats import CID
 
 BytesLike = Union[bytes, bytearray, memoryview]
@@ -25,8 +25,12 @@ class PBLink:
         self.name = name
         self.t_size = size
 
-    def __eq__(self, other) -> bool:
-        return self is other or (
+    def __eq__(self, other: Any) -> bool:
+        if self is other:
+            return True
+        if not isinstance(other, PBLink):
+            return NotImplemented
+        return (
             self.hash == other.hash
             and self.name == other.name
             and self.t_size == other.t_size
@@ -43,9 +47,11 @@ class PBNode:
         self.data = data
         self.links = links
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: Any) -> bool:
         if self is other:
             return True
+        if not isinstance(other, PBNode):
+            return NotImplemented
         if self.data != other.data:
             return False
         return self.links == other.links

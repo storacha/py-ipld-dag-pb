@@ -1,5 +1,5 @@
 from functools import cmp_to_key
-from typing import Optional, Union
+from typing import Any, Optional, Union
 from multiformats import CID
 from .node import BytesLike, PBLink, PBNode, byteslike
 
@@ -26,7 +26,7 @@ def link_comparator(a: PBLink, b: PBLink) -> int:
     return -1 if x < y else 1 if y < x else 0
 
 
-def has_only_attrs(node, attrs: list[str]) -> bool:
+def has_only_attrs(node: Any, attrs: list[str]) -> bool:
     for attr in vars(node).keys():
         found = False
         for only_attr in attrs:
@@ -38,7 +38,7 @@ def has_only_attrs(node, attrs: list[str]) -> bool:
     return True
 
 
-def as_link(link: Union[CID, str, dict]) -> PBLink:
+def as_link(link: Union[CID, str, dict]) -> PBLink:  # type: ignore[type-arg]
     """
     Converts a CID, a string encoded CID, or a PBLink-like dict to a PBLink
     """
@@ -76,7 +76,7 @@ def as_link(link: Union[CID, str, dict]) -> PBLink:
     return pbl
 
 
-def prepare(node: Union[BytesLike, str, dict]) -> PBNode:
+def prepare(node: Union[BytesLike, str, dict]) -> PBNode:  # type: ignore[type-arg]
     """
     Converts bytes, a string, or a PBNode-like dict to a PBNode
     """
@@ -142,10 +142,10 @@ def validate(node: PBNode) -> None:
 
 
 def create_node(data: Optional[BytesLike], links: list[PBLink] = []) -> PBNode:
-    return prepare(PBNode(data, links))
+    return prepare({"data": data, "links": links})
 
 
 def create_link(
     hash: CID, name: Optional[str] = None, size: Optional[int] = None
 ) -> PBLink:
-    return as_link(PBLink(hash, name, size))
+    return as_link({"hash": hash, "name": name, "t_size": size})

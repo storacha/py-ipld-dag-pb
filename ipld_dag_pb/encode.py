@@ -48,14 +48,14 @@ def encode_node(node: RawPBNode) -> memoryview:
         i -= len(node.data)
         for n in range(len(node.data)):
             buf[i + n] = node.data[n]
-        i = encode_varint(buf, i, len(node.data)) - 1
+        i = encode_varint(memoryview(buf), i, len(node.data)) - 1
         buf[i] = 0xA
 
     if hasattr(node, "links") and isinstance(node.links, list):
         for index in range(len(node.links) - 1, -1, -1):
             size = encode_link(node.links[index], memoryview(buf)[0:i])
             i -= size
-            i = encode_varint(buf, i, size) - 1
+            i = encode_varint(memoryview(buf), i, size) - 1
             buf[i] = 0x12
 
     return memoryview(buf)
@@ -106,7 +106,7 @@ def encode_varint(buf: memoryview, offset: int, v: int) -> int:
     while v >= max_uint32:
         buf[offset] = (v & 0x7F) | 0x80
         offset += 1
-        v /= 128
+        v /= 128  # type: ignore[assignment]
 
     while v >= 128:
         buf[offset] = (v & 0x7F) | 0x80

@@ -36,8 +36,8 @@ def decode_bytes(buf: BytesLike, offset: int) -> Tuple[BytesLike, int]:
 
 def decode_key(buf: BytesLike, index: int) -> Tuple[int, int, int]:
     wire, index = decode_varint(buf, index)
-    # [wire_type, field_num, new_index]
-    return [wire & 0x7, wire >> 3, index]
+    # (wire_type, field_num, new_index)
+    return (wire & 0x7, wire >> 3, index)
 
 
 def decode_link(buf: BytesLike) -> RawPBLink:
@@ -97,7 +97,7 @@ def decode_link(buf: BytesLike) -> RawPBLink:
         else:
             raise Exception(
                 "protobuf: (PBLink) invalid field number, expected 1, 2 or 3, got "
-                + field_num
+                + str(field_num)
             )
 
     if index > l:
