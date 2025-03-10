@@ -1,6 +1,7 @@
 from functools import cmp_to_key
+from typing import Optional, Union
 from multiformats import CID
-from .node import PBLink, PBNode
+from .node import BytesLike, PBLink, PBNode, byteslike
 
 pb_node_properties = ["data", "links"]
 pb_link_properties = ["hash", "name", "t_size"]
@@ -10,16 +11,8 @@ def link_comparator(a: PBLink, b: PBLink) -> int:
     if a == b:
         return 0
 
-    abuf = (
-        a.name.encode("utf-8")
-        if hasattr(a, "name") and isinstance(a.name, str)
-        else bytes()
-    )
-    bbuf = (
-        b.name.encode("utf-8")
-        if hasattr(b, "name") and isinstance(b.name, str)
-        else bytes()
-    )
+    abuf = a.name.encode("utf-8") if isinstance(a.name, str) else bytes()
+    bbuf = b.name.encode("utf-8") if isinstance(b.name, str) else bytes()
 
     x = len(abuf)
     y = len(bbuf)
@@ -27,14 +20,14 @@ def link_comparator(a: PBLink, b: PBLink) -> int:
     for i in range(0, min(x, y)):
         if abuf[i] != bbuf[i]:
             x = abuf[i]
-            y = abuf[i]
+            y = bbuf[i]
             break
 
     return -1 if x < y else 1 if y < x else 0
 
 
 def has_only_attrs(node, attrs: list[str]) -> bool:
-    for attr in dir(node):
+    for attr in vars(node).keys():
         found = False
         for only_attr in attrs:
             if attr == only_attr:
@@ -45,168 +38,114 @@ def has_only_attrs(node, attrs: list[str]) -> bool:
     return True
 
 
-def as_link(link) -> PBLink:
+def as_link(link: Union[CID, str, dict]) -> PBLink:
     """
-    Converts a CID, or a PBLink-like object to a PBLink
+    Converts a CID, a string encoded CID, or a PBLink-like dict to a PBLink
     """
-    pbl = PBLink()
+    if isinstance(link, CID) or isinstance(link, str):
+        link = {"hash": link}
 
-    if isinstance(link, CID):
-        pbl.hash = link
-        return pbl
+    if not isinstance(link, dict):
+        raise TypeError("Invalid DAG-PB form")
 
-    if hasattr(link, "hash"):
-        if isinstance(link.hash, CID):
-            pbl.hash = link.hash
-        if isinstance(link.hash, str) or isinstance(link.hash, bytes):
-            pbl.hash = CID.decode(link)
+    hash = link.get("hash", None)
+    if hash is not None:
+        if isinstance(hash, str) or isinstance(hash, byteslike):
+            hash = CID.decode(hash)
+    if not isinstance(hash, CID):
+        raise Exception("Invalid DAG-PB form (hash is not a CID)")
 
-    if not hasattr(link, "hash"):
-        raise Exception("Invalid DAG-PB form")
+    pbl = PBLink(hash)
 
-    if hasattr(link, "name") and isinstance(link.name, str):
-        pbl.name = link.name
+    name = link.get("name", None)
+    if name is not None:
+        if isinstance(name, str):
+            pbl.name = name
+        else:
+            raise TypeError("Invalid DAG-PB form (name is not a string)")
 
-    if hasattr(link, "t_size") and isinstance(link.t_size, int):
-        pbl.t_size = link.t_size
+    size = link.get("t_size", None)
+    if size is not None:
+        if isinstance(size, int):
+            if size < 0:
+                raise TypeError("Invalid DAG-PB form (t_size cannot be negative)")
+            pbl.t_size = size
+        else:
+            raise TypeError("Invalid DAG-PB form (t_size not an integer)")
 
     return pbl
 
 
-def prepare(node) -> PBNode:
-    if isinstance(node, bytes) or isinstance(node, str):
-        data = node
-        node = PBNode()
-        node.data = data
+def prepare(node: Union[BytesLike, str, dict]) -> PBNode:
+    """
+    Converts bytes, a string, or a PBNode-like dict to a PBNode
+    """
+    if isinstance(node, byteslike) or isinstance(node, str):
+        node = {"data": node}
 
-    if isinstance(node, str):
-        data = node.encode("utf-8")
-        node = PBNode()
-        node.data = data
+    if not isinstance(node, dict):
+        raise TypeError("Invalid DAG-PB form")
 
     pbn = PBNode()
-    if hasattr(node, "data"):
-        if isinstance(node.data, str):
-            pbn.data = node.data.encode("utf-8")
-        elif isinstance(node.data, bytes):
-            pbn.data = node.data
+    data = node.get("data", None)
+    if data is not None:
+        if isinstance(data, str):
+            pbn.data = data.encode("utf-8")
+        elif isinstance(data, byteslike):
+            pbn.data = data
         else:
-            raise TypeError("Invalid DAG-PB form")
+            raise TypeError("Invalid DAG-PB form (data is not a string or bytes)")
 
-    if hasattr(node, "links"):
-        if isinstance(node.links, list):
+    links = node.get("links", None)
+    if links is not None:
+        if isinstance(links, list):
             pbn.links = []
-            for l in node.links:
+            for l in links:
                 pbn.links.append(as_link(l))
             pbn.links.sort(key=cmp_to_key(link_comparator))
         else:
-            raise TypeError("Invalid DAG-PB form")
-    else:
-        pbn.links = []
+            raise TypeError("Invalid DAG-PB form (links are not a list)")
 
     return pbn
 
 
-# /**
-#  * @param {PBNode} node
-#  */
-# export function validate (node) {
-#   /*
-#   type PBLink struct {
-#     Hash optional Link
-#     Name optional String
-#     Tsize optional Int
-#   }
+def validate(node: PBNode) -> None:
+    if not has_only_attrs(node, pb_node_properties):
+        raise TypeError("Invalid DAG-PB form (extraneous properties)")
 
-#   type PBNode struct {
-#     Links [PBLink]
-#     Data optional Bytes
-#   }
-#   */
-#   // @ts-ignore private property for TS
-#   if (!node || typeof node !== 'object' || Array.isArray(node) || node instanceof Uint8Array || (node['/'] && node['/'] === node.bytes)) {
-#     throw new TypeError('Invalid DAG-PB form')
-#   }
+    if (node.data is not None) and (not isinstance(node.data, byteslike)):
+        raise TypeError("Invalid DAG-PB form (data must be bytes)")
 
-#   if (!hasOnlyProperties(node, pbNodeProperties)) {
-#     throw new TypeError('Invalid DAG-PB form (extraneous properties)')
-#   }
+    if not isinstance(node.links, list):
+        raise TypeError("Invalid DAG-PB form (links must be a list)")
 
-#   if (node.Data !== undefined && !(node.Data instanceof Uint8Array)) {
-#     throw new TypeError('Invalid DAG-PB form (Data must be bytes)')
-#   }
+    for i in range(0, len(node.links)):
+        link = node.links[i]
 
-#   if (!Array.isArray(node.Links)) {
-#     throw new TypeError('Invalid DAG-PB form (Links must be a list)')
-#   }
+        if not has_only_attrs(link, pb_link_properties):
+            raise TypeError("Invalid DAG-PB form (extraneous properties on link)")
 
-#   for (let i = 0; i < node.Links.length; i++) {
-#     const link = node.Links[i]
-#     // @ts-ignore private property for TS
-#     if (!link || typeof link !== 'object' || Array.isArray(link) || link instanceof Uint8Array || (link['/'] && link['/'] === link.bytes)) {
-#       throw new TypeError('Invalid DAG-PB form (bad link)')
-#     }
+        if (link.hash is not None) and (not isinstance(link.hash, CID)):
+            raise TypeError("Invalid DAG-PB form (link must have a hash)")
 
-#     if (!hasOnlyProperties(link, pbLinkProperties)) {
-#       throw new TypeError('Invalid DAG-PB form (extraneous properties on link)')
-#     }
+        if (link.name is not None) and (not isinstance(link.name, str)):
+            raise TypeError("Invalid DAG-PB form (link Name must be a string)")
 
-#     if (link.Hash === undefined) {
-#       throw new TypeError('Invalid DAG-PB form (link must have a Hash)')
-#     }
+        if link.t_size is not None:
+            if not isinstance(link.t_size, int):
+                raise TypeError("Invalid DAG-PB form (link t_size must be an integer)")
+            if link.t_size < 0:
+                raise TypeError("Invalid DAG-PB form (link t_size cannot be negative)")
 
-#     // @ts-ignore private property for TS
-#     if (link.Hash == null || !link.Hash['/'] || link.Hash['/'] !== link.Hash.bytes) {
-#       throw new TypeError('Invalid DAG-PB form (link Hash must be a CID)')
-#     }
+        if i > 0 and link_comparator(link, node.links[i - 1]) == -1:
+            raise TypeError("Invalid DAG-PB form (links must be sorted by name bytes)")
 
-#     if (link.Name !== undefined && typeof link.Name !== 'string') {
-#       throw new TypeError('Invalid DAG-PB form (link Name must be a string)')
-#     }
 
-#     if (link.Tsize !== undefined) {
-#       if (typeof link.Tsize !== 'number' || link.Tsize % 1 !== 0) {
-#         throw new TypeError('Invalid DAG-PB form (link Tsize must be an integer)')
-#       }
-#       if (link.Tsize < 0) {
-#         throw new TypeError('Invalid DAG-PB form (link Tsize cannot be negative)')
-#       }
-#     }
+def create_node(data: Optional[BytesLike], links: list[PBLink] = []) -> PBNode:
+    return prepare(PBNode(data, links))
 
-#     if (i > 0 && linkComparator(link, node.Links[i - 1]) === -1) {
-#       throw new TypeError('Invalid DAG-PB form (links must be sorted by Name bytes)')
-#     }
-#   }
-# }
 
-# /**
-#  * @param {Uint8Array} data
-#  * @param {PBLink[]} [links=[]]
-#  * @returns {PBNode}
-#  */
-# export function createNode (data, links = []) {
-#   return prepare({ Data: data, Links: links })
-# }
-
-# /**
-#  * @param {string} name
-#  * @param {number} size
-#  * @param {CID} cid
-#  * @returns {PBLink}
-#  */
-# export function createLink (name, size, cid) {
-#   return asLink({ Hash: cid, Name: name, Tsize: size })
-# }
-
-# /**
-#  * @template T
-#  * @param {ByteView<T> | ArrayBufferView<T>} buf
-#  * @returns {ByteView<T>}
-#  */
-# export function toByteView (buf) {
-#   if (buf instanceof ArrayBuffer) {
-#     return new Uint8Array(buf, 0, buf.byteLength)
-#   }
-
-#   return buf
-# }
+def create_link(
+    hash: CID, name: Optional[str] = None, size: Optional[int] = None
+) -> PBLink:
+    return as_link(PBLink(hash, name, size))

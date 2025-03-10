@@ -1,5 +1,11 @@
-from typing import Optional
+from typing import Final, Optional, Union
 from multiformats import CID
+
+BytesLike = Union[bytes, bytearray, memoryview]
+""" Type alias for bytes-like objects. """
+
+byteslike: Final = (bytes, bytearray, memoryview)
+""" Tuple of bytes-like objects types (for use with :obj:`isinstance` checks). """
 
 """
 PBNode and PBLink match the DAG-PB logical format, as described at:
@@ -12,10 +18,37 @@ class PBLink:
     t_size: Optional[int]
     hash: CID
 
+    def __init__(
+        self, hash: CID, name: Optional[str] = None, size: Optional[int] = None
+    ) -> None:
+        self.hash = hash
+        self.name = name
+        self.t_size = size
+
+    def __eq__(self, other) -> bool:
+        return self is other or (
+            self.hash == other.hash
+            and self.name == other.name
+            and self.t_size == other.t_size
+        )
+
 
 class PBNode:
-    data: Optional[bytes]
+    data: Optional[BytesLike]
     links: list[PBLink]
+
+    def __init__(
+        self, data: Optional[BytesLike] = None, links: list[PBLink] = []
+    ) -> None:
+        self.data = data
+        self.links = links
+
+    def __eq__(self, other) -> bool:
+        if self is other:
+            return True
+        if self.data != other.data:
+            return False
+        return self.links == other.links
 
 
 """
@@ -29,9 +62,9 @@ specifics (including CID and optionals).
 class RawPBLink:
     name: str
     t_size: int
-    hash: bytes
+    hash: BytesLike
 
 
 class RawPBNode:
-    data: bytes
+    data: BytesLike
     links: list[RawPBLink]

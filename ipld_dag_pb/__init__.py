@@ -1,71 +1,56 @@
-from .node import PBNode
+from typing import Final
+from multiformats import CID
+from .node import BytesLike, PBLink, PBNode, RawPBLink, RawPBNode
 from .encode import encode_node
+from .decode import decode_node
+from .util import validate, prepare
 
-name = "dag-pb"
-code = 0x70
+name: Final = "dag-pb"
+code: Final = 0x70
 
-/**
- * @param {PBNode} node
- * @returns {ByteView<PBNode>}
- */
-def encode(node: PBNode) -> bytes {
-  validate(node)
 
-  const pbn = {}
-  if (node.Links) {
-    pbn.Links = node.Links.map((l) => {
-      const link = {}
-      if (l.Hash) {
-        link.Hash = l.Hash.bytes // cid -> bytes
-      }
-      if (l.Name !== undefined) {
-        link.Name = l.Name
-      }
-      if (l.Tsize !== undefined) {
-        link.Tsize = l.Tsize
-      }
-      return link
-    })
-  }
-  if (node.Data) {
-    pbn.Data = node.Data
-  }
+def encode(node: PBNode) -> memoryview:
+    validate(node)
+    pbn = RawPBNode()
 
-  return encodeNode(pbn)
-}
+    links: list[RawPBLink] = []
+    for l in node.links:
+        link = RawPBLink()
+        link.hash = bytes(l.hash)
+        if l.name is not None:
+            link.name = l.name
+        if l.t_size is not None:
+            link.t_size = l.t_size
+        links.append(link)
+    if len(links) > 0:
+        pbn.links = links
 
-# /**
-#  * @param {ByteView<PBNode> | ArrayBufferView<PBNode>} bytes
-#  * @returns {PBNode}
-#  */
-# export function decode (bytes) {
-#   const buf = toByteView(bytes)
-#   const pbn = decodeNode(buf)
+    if node.data is not None:
+        pbn.data = node.data
 
-#   const node = {}
+    return encode_node(pbn)
 
-#   if (pbn.Data) {
-#     node.Data = pbn.Data
-#   }
 
-#   if (pbn.Links) {
-#     node.Links = pbn.Links.map((l) => {
-#       const link = {}
-#       try {
-#         link.Hash = CID.decode(l.Hash)
-#       } catch (e) {}
-#       if (!link.Hash) {
-#         throw new Error('Invalid Hash field found in link, expected CID')
-#       }
-#       if (l.Name !== undefined) {
-#         link.Name = l.Name
-#       }
-#       if (l.Tsize !== undefined) {
-#         link.Tsize = l.Tsize
-#       }
-#       return link
-#     })
-#   }
+def decode(buf: BytesLike) -> PBNode:
+    pbn = decode_node(buf)
+    data = None
+    if hasattr(pbn, "data"):
+        data = pbn.data
+    node = PBNode(data)
 
-#   return node
-# }
+    if hasattr(pbn, "links"):
+        links: list[PBLink] = []
+        for l in pbn.links:
+            if not hasattr(l, "hash"):
+                raise TypeError("Invalid Hash field found in link, expected CID")
+            link = PBLink(CID.decode(l.hash))
+
+            if hasattr(l, "name"):
+                link.name = l.name
+            if hasattr(l, "t_size"):
+                link.t_size = l.t_size
+
+            links.append(link)
+        node.links = links
+
+    return node

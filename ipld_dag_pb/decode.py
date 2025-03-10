@@ -1,8 +1,8 @@
 from typing import Tuple
-from .node import RawPBLink, RawPBNode
+from .node import BytesLike, RawPBLink, RawPBNode, byteslike
 
 
-def decode_varint(buf: bytes, offset: int) -> Tuple[int, int]:
+def decode_varint(buf: BytesLike, offset: int) -> Tuple[int, int]:
     v = 0
     shift = 0
     while True:
@@ -22,7 +22,7 @@ def decode_varint(buf: bytes, offset: int) -> Tuple[int, int]:
     return (v, offset)
 
 
-def decode_bytes(buf: bytes, offset: int) -> Tuple[bytes, int]:
+def decode_bytes(buf: BytesLike, offset: int) -> Tuple[BytesLike, int]:
     byte_len, offset = decode_varint(buf, offset)
     post_offset = offset + byte_len
 
@@ -31,16 +31,16 @@ def decode_bytes(buf: bytes, offset: int) -> Tuple[bytes, int]:
     if post_offset > len(buf):
         raise EOFError("protobuf: unexpected end of data")
 
-    return (buf[offset, post_offset], post_offset)
+    return (buf[offset:post_offset], post_offset)
 
 
-def decode_key(buf: bytes, index: int) -> Tuple[int, int, int]:
+def decode_key(buf: BytesLike, index: int) -> Tuple[int, int, int]:
     wire, index = decode_varint(buf, index)
     # [wire_type, field_num, new_index]
     return [wire & 0x7, wire >> 3, index]
 
 
-def decode_link(buf: bytes) -> RawPBLink:
+def decode_link(buf: BytesLike) -> RawPBLink:
     link = RawPBLink()
     l = len(buf)
     index = 0
@@ -53,7 +53,9 @@ def decode_link(buf: bytes) -> RawPBLink:
                 raise Exception("protobuf: (PBLink) duplicate Hash section")
             if wire_type != 2:
                 raise ValueError(
-                    "protobuf: (PBLink) wrong wire type ({wire_type}) for Hash"
+                    "protobuf: (PBLink) wrong wire type ("
+                    + str(wire_type)
+                    + ") for Hash"
                 )
             if hasattr(link, "name"):
                 raise Exception(
@@ -70,7 +72,9 @@ def decode_link(buf: bytes) -> RawPBLink:
                 raise Exception("protobuf: (PBLink) duplicate Name section")
             if wire_type != 2:
                 raise ValueError(
-                    "protobuf: (PBLink) wrong wire type ({wire_type}) for Name"
+                    "protobuf: (PBLink) wrong wire type ("
+                    + str(wire_type)
+                    + ") for Name"
                 )
             if hasattr(link, "t_size"):
                 raise Exception(
@@ -78,19 +82,22 @@ def decode_link(buf: bytes) -> RawPBLink:
                 )
 
             byts, index = decode_bytes(buf, index)
-            link.name = byts.decode("utf-8")
+            link.name = str(byts, "utf-8")
         elif field_num == 3:
             if hasattr(link, "t_size"):
                 raise Exception("protobuf: (PBLink) duplicate Tsize section")
             if wire_type != 0:
                 raise ValueError(
-                    "protobuf: (PBLink) wrong wire type ({wire_type}) for Tsize"
+                    "protobuf: (PBLink) wrong wire type ("
+                    + str(wire_type)
+                    + ") for Tsize"
                 )
 
             link.t_size, index = decode_varint(buf, index)
         else:
             raise Exception(
-                "protobuf: (PBLink) invalid field number, expected 1, 2 or 3, got ${field_num}"
+                "protobuf: (PBLink) invalid field number, expected 1, 2 or 3, got "
+                + field_num
             )
 
     if index > l:
@@ -99,19 +106,20 @@ def decode_link(buf: bytes) -> RawPBLink:
     return link
 
 
-def decode_node(buf: bytes) -> RawPBNode:
+def decode_node(buf: BytesLike) -> RawPBNode:
     l = len(buf)
     index = 0
     links: list[RawPBLink] | None = None
     links_before_data = False
-    data: bytes | None = None
+    data: BytesLike | None = None
 
     while index < l:
         wire_type, field_num, index = decode_key(buf, index)
 
         if wire_type != 2:
             raise Exception(
-                "protobuf: (PBNode) invalid wire type, expected 2, got {wireType}"
+                "protobuf: (PBNode) invalid wire type, expected 2, got "
+                + str(wire_type)
             )
 
         if field_num == 1:
@@ -119,19 +127,20 @@ def decode_node(buf: bytes) -> RawPBNode:
                 raise Exception("protobuf: (PBNode) duplicate Data section")
 
             data, index = decode_bytes(buf, index)
-            if links == None:
+            if links is None:
                 links_before_data = True
         elif field_num == 2:
             if links_before_data:  # interleaved Links/Data/Links
                 raise Exception("protobuf: (PBNode) duplicate Links section")
-            elif links == None:
+            elif links is None:
                 links = []
 
             byts, index = decode_bytes(buf, index)
             links.append(decode_link(byts))
         else:
             raise Exception(
-                "protobuf: (PBNode) invalid fieldNumber, expected 1 or 2, got {field_num}"
+                "protobuf: (PBNode) invalid fieldNumber, expected 1 or 2, got "
+                + str(field_num)
             )
 
     if index > l:
@@ -140,7 +149,7 @@ def decode_node(buf: bytes) -> RawPBNode:
     node = RawPBNode()
     if data != None:
         node.data = data
-
-    node.links = links if links != None else []
+    if links != None:
+        node.links = links
 
     return node

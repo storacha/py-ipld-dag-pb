@@ -1,5 +1,5 @@
 from math import floor
-from .node import RawPBLink, RawPBNode
+from .node import RawPBLink, RawPBNode, byteslike
 
 max_int32 = 2**32
 max_uint32 = 2**31
@@ -12,13 +12,13 @@ def encode_link(link: RawPBLink, buf: memoryview) -> int:
     """
     i = len(buf)
 
-    if isinstance(link.t_size, int):
+    if hasattr(link, "t_size") and isinstance(link.t_size, int):
         if link.t_size < 0:
-            raise TypeError("Tsize cannot be negative")
-        i = encode_varint(buf, i, link.t_size)
+            raise TypeError("t_size cannot be negative")
+        i = encode_varint(buf, i, link.t_size) - 1
         buf[i] = 0x18
 
-    if isinstance(link.name, str):
+    if hasattr(link, "name") and isinstance(link.name, str):
         name_bytes = link.name.encode("utf-8")
         i -= len(name_bytes)
         for n in range(len(name_bytes)):
@@ -26,14 +26,14 @@ def encode_link(link: RawPBLink, buf: memoryview) -> int:
         i = encode_varint(buf, i, len(name_bytes)) - 1
         buf[i] = 0x12
 
-    if isinstance(link.hash, bytes):
+    if hasattr(link, "hash") and isinstance(link.hash, byteslike):
         i -= len(link.hash)
         for n in range(len(link.hash)):
             buf[i + n] = link.hash[n]
         i = encode_varint(buf, i, len(link.hash)) - 1
         buf[i] = 0xA
 
-    return buf.length - i
+    return len(buf) - i
 
 
 def encode_node(node: RawPBNode) -> memoryview:
@@ -44,21 +44,21 @@ def encode_node(node: RawPBNode) -> memoryview:
     buf = bytearray(size)
     i = size
 
-    if isinstance(node.data, bytes):
+    if hasattr(node, "data") and isinstance(node.data, byteslike):
         i -= len(node.data)
         for n in range(len(node.data)):
             buf[i + n] = node.data[n]
-        i = encode_varint(buf, i, len(node.data))
+        i = encode_varint(buf, i, len(node.data)) - 1
         buf[i] = 0xA
 
-    if isinstance(node.links, list):
-        for index in range(len(node.links) - 1, 0):
+    if hasattr(node, "links") and isinstance(node.links, list):
+        for index in range(len(node.links) - 1, -1, -1):
             size = encode_link(node.links[index], memoryview(buf)[0:i])
             i -= size
             i = encode_varint(buf, i, size) - 1
             buf[i] = 0x12
 
-    return bytes
+    return memoryview(buf)
 
 
 def size_link(link: RawPBLink) -> int:
@@ -67,37 +67,31 @@ def size_link(link: RawPBLink) -> int:
     """
     n = 0
 
-    if isinstance(link.hash, bytes):
+    if hasattr(link, "hash") and isinstance(link.hash, byteslike):
         l = len(link.hash)
         n += 1 + l + sov(l)
 
-    if isinstance(link.name, str):
+    if hasattr(link, "name") and isinstance(link.name, str):
         l = len(link.name.encode("utf-8"))
         n += 1 + l + sov(l)
 
-    if isinstance(link.t_size, int):
-        n += 1 + sov(link.Tsize)
+    if hasattr(link, "t_size") and isinstance(link.t_size, int):
+        n += 1 + sov(link.t_size)
 
     return n
 
 
-# /**
-#  * Work out exactly how many bytes this node takes up
-#  *
-#  * @param {RawPBNode} node
-#  * @returns {number}
-#  */
 def size_node(node: RawPBNode) -> int:
     """
     work out exactly how many bytes this node takes up
     """
     n = 0
 
-    if isinstance(node.data, bytes):
+    if hasattr(node, "data") and isinstance(node.data, byteslike):
         l = len(node.data)
         n += 1 + l + sov(l)
 
-    if isinstance(node.links, list):
+    if hasattr(node, "links") and isinstance(node.links, list):
         for link in node.links:
             l = size_link(link)
             n += 1 + l + sov(l)
