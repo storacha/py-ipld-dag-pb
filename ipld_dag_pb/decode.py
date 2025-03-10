@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, Union
 from .node import BytesLike, RawPBLink, RawPBNode, byteslike
 
 
@@ -109,9 +109,9 @@ def decode_link(buf: BytesLike) -> RawPBLink:
 def decode_node(buf: BytesLike) -> RawPBNode:
     l = len(buf)
     index = 0
-    links: list[RawPBLink] | None = None
+    links: Union[list[RawPBLink], None] = None
     links_before_data = False
-    data: BytesLike | None = None
+    data: Union[BytesLike, None] = None
 
     while index < l:
         wire_type, field_num, index = decode_key(buf, index)
