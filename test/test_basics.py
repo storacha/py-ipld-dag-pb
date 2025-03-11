@@ -193,7 +193,7 @@ def test_prepare_create_link_with_empty_link_name():
     }
     expected = PBNode(
         data=node["data"],
-        links=[as_link({"hash": node["links"]})]
+        links=[as_link({"hash": node["links"][0]})]
     )
     prepared = prepare(node)
     assert prepared == expected
@@ -211,7 +211,7 @@ def test_prepare_create_link_with_undefined_name():
     }
     expected = PBNode(
         data=node["data"],
-        links=[as_link({"hash": node["links"]})]
+        links=[as_link(node["links"][0])]
     )
     prepared = prepare(node)
     assert prepared == expected
