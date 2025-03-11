@@ -1,7 +1,7 @@
 import pytest
 from multiformats import CID
 from ipld_dag_pb import decode, encode, prepare, PBNode
-from ipld_dag_pb.util import create_link, create_node
+from ipld_dag_pb.util import as_link, create_link, create_node
 
 
 def test_prepare_encode_an_empty_node() -> None:
@@ -108,6 +108,116 @@ def test_prepare_encode_node_with_links_and_sorting() -> None:
         "some link",
         "some other link",
     ]
+
+
+def create_node_with_stable_sorted_links():
+    links = [
+        {
+          "name": '',
+          "hash": CID.decode('QmUGhP2X8xo9dsj45vqx1H6i5WqPqLqmLQsHTTxd3ke8mp'),
+          "t_size": 262158
+        }, 
+        {
+          "name": '',
+          "hash": CID.decode('QmP7SrR76KHK9A916RbHG1ufy2TzNABZgiE23PjZDMzZXy'),
+          "t_size": 262158
+        },
+        {
+          "name": '',
+          "hash": CID.decode('QmQg1v4o9xdT3Q14wh4S7dxZkDjyZ9ssFzFzyep1YrVJBY'),
+          "t_size": 262158
+        },
+        {
+          "name": '',
+          "hash": CID.decode('QmdP6fartWRrydZCUjHgrJ4XpxSE4SAoRsWJZ1zJ4MWiuf'),
+          "t_size": 262158
+        },
+        {
+          "name": '',
+          "hash": CID.decode('QmNNjUStxtMC1WaSZYiDW6CmAUrvd5Q2e17qnxPgVdwrwW'),
+          "t_size": 262158
+        },
+        {
+          "name": '',
+          "hash": CID.decode('QmWJwqZBJWerHsN1b7g4pRDYmzGNnaMYuD3KSbnpaxsB2h'),
+          "t_size": 262158
+        },
+        {
+          "name": '',
+          "hash": CID.decode('QmRXPSdysBS3dbUXe6w8oXevZWHdPQWaR2d3fggNsjvieL'),
+          "t_size": 262158
+        },
+        {
+          "name": '',
+          "hash": CID.decode('QmTUZAXfws6zrhEksnMqLxsbhXZBQs4FNiarjXSYQqVrjC'),
+          "t_size": 262158
+        },
+        {
+          "name": '',
+          "hash": CID.decode('QmNNk7dTdh8UofwgqLNauq6N78DPc6LKK2yBs1MFdx7Mbg'),
+          "t_size": 262158
+        },
+        {
+          "name": '',
+          "hash": CID.decode('QmW5mrJfyqh7B4ywSvraZgnWjS3q9CLiYURiJpCX3aro5i'),
+          "t_size": 262158
+        },
+        {
+          "name": '',
+          "hash": CID.decode('QmTFHZL5CkgNz19MdPnSuyLAi6AVq9fFp81zmPpaL2amED'),
+          "t_size": 262158
+        }
+    ]
+
+    some_data = "some data".encode("utf-8")
+    node = PBNode(
+        data=some_data, links=[as_link(link) for link in links]
+    )
+
+    prepared = prepare({"data": some_data, "links": links})
+    assert prepared == node
+    reconstituted = decode(encode(node))
+
+    # sorting
+    assert list(map(lambda l: l.hash, reconstituted.links)) == list(
+        map(lambda l: l["hash"], links)
+    )
+
+
+def test_prepare_create_link_with_empty_link_name():
+    node = {
+        "data": "hello".encode(),
+        "links": [
+            CID.decode("QmXg9Pp2ytZ14xgmQjYEiHjVjMFXzCVVEcRTWJBmLgR39U")
+        ]
+    }
+    expected = PBNode(
+        data=node["data"],
+        links=[as_link({"hash": node["links"]})]
+    )
+    prepared = prepare(node)
+    assert prepared == expected
+
+
+def test_prepare_create_link_with_undefined_name():
+    node = {
+        "data": "hello".encode(),
+        "links": [
+            {
+                "t_size": 10,
+                "hash": CID.decode("QmXg9Pp2ytZ14xgmQjYEiHjVjMFXzCVVEcRTWJBmLgR39U")
+            }
+        ]
+    }
+    expected = PBNode(
+        data=node["data"],
+        links=[as_link({"hash": node["links"]})]
+    )
+    prepared = prepare(node)
+    assert prepared == expected
+
+    reconstituted = decode(encode(prepared))
+    assert reconstituted == expected
 
 
 def test_create_node_with_data_and_links():
