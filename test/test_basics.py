@@ -110,7 +110,7 @@ def test_prepare_encode_node_with_links_and_sorting() -> None:
     ]
 
 
-def create_node_with_stable_sorted_links():
+def test_create_node_with_stable_sorted_links():
     links = [
         {
           "name": '',
@@ -218,6 +218,35 @@ def test_prepare_create_link_with_undefined_name():
 
     reconstituted = decode(encode(prepared))
     assert reconstituted == expected
+
+
+def test_create_node_with_bytes_only():
+    node = "hello".encode()
+    reconstituted = decode(encode(prepare(node)))
+    assert reconstituted == PBNode(data=node, links=[])
+
+
+def test_prepare_create_empty_node():
+    node = bytes()
+    prepared = prepare(node)
+    assert prepared == PBNode(data=node, links=[])
+    reconstituted = decode(encode(prepared))
+    assert reconstituted == PBNode(data=node, links=[])
+
+
+def test_prepare_create_empty_node_from_object():
+    prepared = prepare({})
+    assert prepared == PBNode(links=[])
+    reconstituted = decode(encode(prepared))
+    assert reconstituted == PBNode(links=[])
+
+
+def test_fail_prepare_create_node_with_other_data_types():
+    invalids = [[], True, 100, lambda: {}, object()]
+
+    for invalid in invalids:
+        with pytest.raises(TypeError):
+            encode(prepare(invalid))
 
 
 def test_create_node_with_data_and_links():
