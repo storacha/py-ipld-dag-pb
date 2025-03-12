@@ -1,6 +1,6 @@
 import pytest
-from multiformats import CID
-from ipld_dag_pb import decode, encode, prepare, PBNode
+from multiformats import CID, multihash
+from ipld_dag_pb import decode, encode, prepare, PBNode, code
 from ipld_dag_pb.util import as_link, create_link, create_node
 
 
@@ -247,6 +247,121 @@ def test_fail_prepare_create_node_with_other_data_types():
     for invalid in invalids:
         with pytest.raises(TypeError):
             encode(prepare(invalid))
+
+
+def test_fail_prepare_create_link_with_other_data_types():
+    invalids = [[], True, 100, lambda: {}, object(), {"asCID": {}}]
+    for invalid in invalids:
+        with pytest.raises(Exception):
+            encode(prepare({"links": [invalid]}))
+            if not type(list):
+                # test invalids without list enclosure, but not the invalid "empty list"
+                # value itself because that won't raise an error
+                encode(prepare({"links": invalid}))
+
+
+def test_fail_create_link_with_bad_cid_hash():
+    with pytest.raises(ValueError):
+        prepare({"links": [{"hash": bytearray([0xf0, 1, 2, 3, 4])}]})
+
+
+def test_deserialize_go_ipfs_block_with_unnamed_links():
+    test_block_unnamed_links = bytes.fromhex(
+        "122b0a2212203f29086b59b9e046b362b4b19c9371e834a9f5a80597af83be6d8b7d1a5ad33b120"
+        "018aed4e015122b0a221220ae1a5afd7c770507dddf17f92bba7a326974af8ae5277c198cf132063"
+        "73f7263120018aed4e015122b0a22122022ab2ebf9c3523077bd6a171d516ea0e1be1beb132d8537"
+        "78bcc62cd208e77f1120018aed4e015122b0a22122040a77fe7bc69bbef2491f7633b7c462d0bce9"
+        "68868f88e2cbcaae9d0996997e8120018aed4e015122b0a2212206ae1979b14dd43966b0241ebe80"
+        "ac2a04ad48959078dc5affa12860648356ef6120018aed4e015122b0a221220a957d1f89eb9a8615"
+        "93bfcd19e0637b5c957699417e2b7f23c88653a240836c4120018aed4e015122b0a221220345f9c2"
+        "137a2cd76d7b876af4bfecd01f80b7dd125f375cb0d56f8a2f96de2c31200189bfec10f0a2b080218"
+        "cbc1819201208080e015208080e015208080e015208080e015208080e015208080e01520cbc1c10f"
+    )
+
+    expected_links = [
+        {
+            "name": '',
+            "hash": CID.decode('QmSbCgdsX12C4KDw3PDmpBN9iCzS87a5DjgSCoW9esqzXk'),
+            "t_size": 45623854
+        },
+        {
+            "name": '',
+            "hash": CID.decode('Qma4GxWNhywSvWFzPKtEswPGqeZ9mLs2Kt76JuBq9g3fi2'),
+            "t_size": 45623854
+        },
+        {
+            "name": '',
+            "hash": CID.decode('QmQfyxyys7a1e3mpz9XsntSsTGc8VgpjPj5BF1a1CGdGNc'),
+            "t_size": 45623854
+        },
+        {
+            "name": '',
+            "hash": CID.decode('QmSh2wTTZT4N8fuSeCFw7wterzdqbE93j1XDhfN3vQHzDV'),
+            "t_size": 45623854
+        },
+        {
+            "name": '',
+            "hash": CID.decode('QmVXsSVjwxMsCwKRCUxEkGb4f4B98gXVy3ih3v4otvcURK'),
+            "t_size": 45623854
+        },
+        {
+            "name": '',
+            "hash": CID.decode('QmZjhH97MEYwQXzCqSQbdjGDhXWuwW4RyikR24pNqytWLj'),
+            "t_size": 45623854
+        },
+        {
+            "name": '',
+            "hash": CID.decode('QmRs6U5YirCqC7taTynz3x2GNaHJZ3jDvMVAzaiXppwmNJ'),
+            "t_size": 32538395
+        }
+    ]
+    node = decode(test_block_unnamed_links)
+    assert node.links == [as_link(link) for link in expected_links]
+
+    hash = multihash.digest(data=test_block_unnamed_links, hashfun="sha2-256")
+    cid = CID(base="base58btc", version=0, codec=code, digest=hash)
+    assert str(cid) == 'QmQqy2SiEkKgr2cw5UbQ93TtLKEMsD8TdcWggR8q9JabjX'
+
+
+def test_deserialize_go_ipfs_block_with_named_links():
+    test_block_named_links = bytes.fromhex(
+        "12390a221220b4397c02da5513563d33eef894bf68f2ccdf1bdfc14a976956ab3d1c72f735a012"
+        "0e617564696f5f6f6e6c792e6d346118cda88f0b12310a221220025c13fcd1a885df444f64a4a8"
+        "2a26aea867b1148c68cb671e83589f971149321208636861742e74787418e40712340a2212205d"
+        "44a305b9b328ab80451d0daa72a12a7bf2763c5f8bbe327597a31ee40d1e48120c706c61796261"
+        "636b2e6d3375187412360a2212202539ed6e85f2a6f9097db9d76cffd49bf3042eb2e3e8e9af4a"
+        "3ce842d49dea22120a7a6f6f6d5f302e6d70341897fb8592010a020801"
+    )
+
+    expected_links = [
+        {
+          "name": 'audio_only.m4a',
+          "hash": CID.decode('QmaUAwAQJNtvUdJB42qNbTTgDpzPYD1qdsKNtctM5i7DGB'),
+          "t_size": 23319629
+        },
+        {
+          "name": 'chat.txt',
+          "hash": CID.decode('QmNVrxbB25cKTRuKg2DuhUmBVEK9NmCwWEHtsHPV6YutHw'),
+          "t_size": 996
+        },
+        {
+          "name": 'playback.m3u',
+          "hash": CID.decode('QmUcjKzDLXBPmB6BKHeKSh6ZoFZjss4XDhMRdLYRVuvVfu'),
+          "t_size": 116
+        },
+        {
+          "name": 'zoom_0.mp4',
+          "hash": CID.decode('QmQqy2SiEkKgr2cw5UbQ93TtLKEMsD8TdcWggR8q9JabjX'),
+          "t_size": 306281879
+        }
+    ]
+
+    node = decode(test_block_named_links)
+    assert node.links == [as_link(link) for link in expected_links]
+
+    hash = multihash.digest(test_block_named_links, "sha2-256")
+    cid = CID(base="base58btc", version=0, codec=code, digest=hash)
+    assert str(cid) == "QmbSAC58x1tsuPBAoarwGuTQAgghKvdbKSBC8yp5gKCj5M"
 
 
 def test_create_node_with_data_and_links():
