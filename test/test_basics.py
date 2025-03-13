@@ -386,6 +386,40 @@ def test_node_with_data_between_links():
         decode(double_links_node)
 
 
+def test_prepare_create_with_multihash_bytes():
+    link_hash = bytes.fromhex(
+        '12208ab7a6c5e74737878ac73863cb76739d15d4666de44e5756bf55a2f9e9ab5f43'
+    )
+    link = {"name": "hello", "t_szie": 3, "hash": link_hash}
+
+    node = {"data": b"some data", "links": [link]}
+    prepared = prepare(node)
+    assert str(prepared.links[0].hash) == "QmXg9Pp2ytZ14xgmQjYEiHjVjMFXzCVVEcRTWJBmLgR39U"
+
+    reconstituted = decode(encode(prepared))
+    assert str(
+        reconstituted.links[0].hash
+    ) == "QmXg9Pp2ytZ14xgmQjYEiHjVjMFXzCVVEcRTWJBmLgR39U"
+
+
+def test_prepare_and_create_with_cid_string():
+    link_string = "QmXg9Pp2ytZ14xgmQjYEiHjVjMFXzCVVEcRTWJBmLgR39U"
+    link = {"name": "hello", "t_size": 3, "hash": link_string}
+
+    node = {"data": b"some data", "links": [link]}
+    prepared = prepare(node)
+    assert str(prepared.links[0].hash) == link_string
+
+    reconstituted = decode(encode(prepared))
+    assert str(reconstituted.links[0].hash == link_string)
+
+
+def test_fail_to_create_without_hash():
+    node = {"data": b"some data", "links": [{"name": "hello", "t_size": 3}]}
+    with pytest.raises(Exception):
+        prepare(node)
+
+
 def test_create_node_with_data_and_links():
     """Test creating a node with data and links"""
     data = bytes([0, 1, 2, 3, 4])
