@@ -364,6 +364,28 @@ def test_deserialize_go_ipfs_block_with_named_links():
     assert str(cid) == "QmbSAC58x1tsuPBAoarwGuTQAgghKvdbKSBC8yp5gKCj5M"
 
 
+# Ref: https://github.com/ipld/specs/pull/360
+# Ref: https://github.com/ipld/go-codec-dagpb/pull/26
+def test_deserialize_ancient_ipfs_block_with_data_before_links():
+    out_of_order_node_hex = (
+        "0a040802180612240a221220cf92fdefcdc34cac009c8b05eb662be0618db9de55ecd42785e9ec"
+        "6712f8df6512240a221220cf92fdefcdc34cac009c8b05eb662be0618db9de55ecd42785e9ec67"
+        "12f8df65"
+    )
+    out_of_order_node = bytes.fromhex(out_of_order_node_hex)
+    node = decode(out_of_order_node)
+    reencoded = encode(node)
+    # we only care that it's different, i.e. this won't round-trip
+    assert reencoded.hex() != out_of_order_node_hex
+
+
+# this condition is introduced due to the laxity of the above case
+def test_node_with_data_between_links():
+    double_links_node = bytes.fromhex("12240a221220cf92fdefcdc34cac009c8b05eb662be0618db9de55ecd42785e9ec6712f8df650a040802180612240a221220cf92fdefcdc34cac009c8b05eb662be0618db9de55ecd42785e9ec6712f8df65")
+    with pytest.raises(Exception):
+        decode(double_links_node)
+
+
 def test_create_node_with_data_and_links():
     """Test creating a node with data and links"""
     data = bytes([0, 1, 2, 3, 4])
