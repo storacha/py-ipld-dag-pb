@@ -1,5 +1,5 @@
 from typing import Tuple, Union
-from .node import BytesLike, RawPBLink, RawPBNode, byteslike
+from .node import BytesLike, RawPBLink, RawPBNode
 
 
 def decode_varint(buf: BytesLike, offset: int) -> Tuple[int, int]:
@@ -127,7 +127,7 @@ def decode_node(buf: BytesLike) -> RawPBNode:
                 raise Exception("protobuf: (PBNode) duplicate Data section")
 
             data, index = decode_bytes(buf, index)
-            if links is None:
+            if links is not None:  # Set flag if links exist before data
                 links_before_data = True
         elif field_num == 2:
             if links_before_data:  # interleaved Links/Data/Links
@@ -151,5 +151,7 @@ def decode_node(buf: BytesLike) -> RawPBNode:
         node.data = data
     if links != None:
         node.links = links
+    else:
+        node.links = []  # Ensure links is never None in output, matching JS
 
     return node
