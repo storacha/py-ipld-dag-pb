@@ -1,4 +1,4 @@
-from typing import TypedDict
+from typing import TypedDict, Union
 import json
 
 from multiformats import CID
@@ -16,7 +16,7 @@ a_cid = CID.decode(bytearray([1, 85, 0, 5, 0, 1, 2, 3, 4]))
 
 
 class Case(TypedDict):
-    node: RawPBNode | PBNode
+    node: Union[RawPBNode, PBNode]
     expected_bytes: str
     expected_form: str
 
