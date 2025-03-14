@@ -21,7 +21,7 @@ class Case(TypedDict):
     expected_form: str
 
 
-def serialize_node_to_json(node: RawPBNode | PBNode):
+def serialize_node_to_json(node: Union[RawPBNode, PBNode]):
     if isinstance(node, RawPBNode):
         serialized_links = []
         serializable_obj = {}
