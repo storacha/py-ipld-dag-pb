@@ -71,7 +71,7 @@ class RawPBLink:
     hash: BytesLike
 
 
-def __eq__(self, other):
+def __eq__(self, other: Any) -> bool:
     if not isinstance(other, RawPBLink):
         return NotImplemented
 
@@ -93,7 +93,7 @@ class RawPBNode:
     data: BytesLike
     links: list[RawPBLink]
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         if self is other:
             return True
 
