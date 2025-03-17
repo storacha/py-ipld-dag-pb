@@ -106,7 +106,7 @@ def encode_varint(buf: memoryview, offset: int, v: int) -> int:
     while v >= max_uint32:
         buf[offset] = (v & 0x7F) | 0x80
         offset += 1
-        v /= 128  # type: ignore[assignment]
+        v //= 128
 
     while v >= 128:
         buf[offset] = (v & 0x7F) | 0x80
