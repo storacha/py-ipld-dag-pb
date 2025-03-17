@@ -71,22 +71,22 @@ class RawPBLink:
     hash: BytesLike
 
 
-def __eq__(self, other: Any) -> bool:
-    if not isinstance(other, RawPBLink):
-        return NotImplemented
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, RawPBLink):
+            return NotImplemented
 
-    if (getattr(self, "name", None) is not None) and getattr(self, "name", None):
-        if self.name != other.name:
+        if (getattr(self, "name", None) is not None) and getattr(self, "name", None):
+            if self.name != other.name:
+                return False
+
+        if (getattr(self, "t_size", None) is not None) and getattr(self, "t_size", None):
+            if self.t_size != other.t_size:
+                return False
+
+        if bytes(self.hash) != bytes(other.hash):
             return False
 
-    if (getattr(self, "t_size", None) is not None) and getattr(self, "t_size", None):
-        if self.t_size != other.t_size:
-            return False
-
-    if bytes(self.hash) != bytes(other.hash):
-        return False
-
-    return True
+        return True
 
 
 class RawPBNode:
