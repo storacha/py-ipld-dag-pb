@@ -1,4 +1,3 @@
-from enum import verify
 from typing import TypedDict, Union
 import json
 
@@ -8,7 +7,7 @@ import pytest
 from ipld_dag_pb import  encode, decode
 from ipld_dag_pb.decode import decode_node
 from ipld_dag_pb.encode import encode_node
-from ipld_dag_pb.node import PBNode, RawPBLink, RawPBNode, PBLink
+from ipld_dag_pb.node import PBNode, RawPBLink, RawPBNode
 from ipld_dag_pb.util import as_link
 
 
@@ -357,7 +356,7 @@ def test_links_tsize_some():
     )
 
 
-def links_hash_some_tsize_some():
+def test_links_hash_some_tsize_some():
     verify_round_trip(
         {
             "node": PBNode(links=[as_link({"hash": a_cid, "t_size": 9007199254740991})]),
