@@ -72,16 +72,17 @@ class RawPBLink:
 
 
     def __eq__(self, other: Any) -> bool:
+        if self is other:
+            return True
+
         if not isinstance(other, RawPBLink):
             return NotImplemented
 
-        if (getattr(self, "name", None) is not None) and getattr(self, "name", None):
-            if self.name != other.name:
-                return False
+        if getattr(self, "name", None) != getattr(self, "name", None):
+            return False
 
-        if (getattr(self, "t_size", None) is not None) and getattr(self, "t_size", None):
-            if self.t_size != other.t_size:
-                return False
+        if getattr(self, "t_size", None) != getattr(self, "t_size", None):
+            return False
 
         if bytes(self.hash) != bytes(other.hash):
             return False
@@ -100,24 +101,10 @@ class RawPBNode:
         if not isinstance(other, RawPBNode):
             return NotImplemented
 
-        if (getattr(self, "hash", None) is not None) and (getattr(other, "hash", None)):
-            if self.data != other.data:
-                return False
+        if getattr(self, "data", None) != getattr(other, "data", None):
+            return False
 
         if len(self.links) != len(other.links):
             return False
 
-        for i in range(len(self.links)):
-            if (getattr(self.links[i], "hash", None) is not None) and (getattr(other.links[i], "links", None)):
-                if self.links[i].hash != other.links[i].hash:
-                    return False
-
-            if (getattr(self.links[i], "name", None) is not None) and (getattr(other.links[i], "name", None)):
-                if self.links[i].name != other.links[i].name:
-                    return False
-
-            if (getattr(self.links[i], "t_size", None) is not None) and (getattr(other.links[i], "t_size", None)):
-                if self.links[i].t_size != other.links[i].t_size:
-                    return False
-
-        return True
+        return self.links == other.links
