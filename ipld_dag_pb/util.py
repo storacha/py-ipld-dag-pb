@@ -135,7 +135,7 @@ def validate(node: PBNode) -> None:
             raise TypeError("Invalid DAG-PB form (link Name must be a string)")
 
         if link.t_size is not None:
-            if not isinstance(link.t_size, int):
+            if not type(link.t_size) is int:
                 raise TypeError("Invalid DAG-PB form (link t_size must be an integer)")
             if link.t_size < 0:
                 raise TypeError("Invalid DAG-PB form (link t_size cannot be negative)")
