@@ -71,6 +71,40 @@ class RawPBLink:
     hash: BytesLike
 
 
+    def __eq__(self, other: Any) -> bool:
+        if self is other:
+            return True
+
+        if not isinstance(other, RawPBLink):
+            return NotImplemented
+
+        if getattr(self, "name", None) != getattr(other, "name", None):
+            return False
+
+        if getattr(self, "t_size", None) != getattr(other, "t_size", None):
+            return False
+
+        if bytes(self.hash) != bytes(other.hash):
+            return False
+
+        return True
+
+
 class RawPBNode:
     data: BytesLike
     links: list[RawPBLink]
+
+    def __eq__(self, other: Any) -> bool:
+        if self is other:
+            return True
+
+        if not isinstance(other, RawPBNode):
+            return NotImplemented
+
+        if getattr(self, "data", None) != getattr(other, "data", None):
+            return False
+
+        if len(self.links) != len(other.links):
+            return False
+
+        return self.links == other.links
