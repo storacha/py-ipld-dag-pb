@@ -78,10 +78,10 @@ class RawPBLink:
         if not isinstance(other, RawPBLink):
             return NotImplemented
 
-        if getattr(self, "name", None) != getattr(self, "name", None):
+        if getattr(self, "name", None) != getattr(other, "name", None):
             return False
 
-        if getattr(self, "t_size", None) != getattr(self, "t_size", None):
+        if getattr(self, "t_size", None) != getattr(other, "t_size", None):
             return False
 
         if bytes(self.hash) != bytes(other.hash):
