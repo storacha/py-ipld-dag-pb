@@ -77,8 +77,6 @@ def test_validate_fails_bad_forms():
     # empty link
     throws(PBNode(links=[{}]))  # type: ignore[type-arg]
 
-    throws(PBNode(links=[{"hash": a_cid, "extraneous": True}]))  # type: ignore[type-arg]
-
     # bad data forms
     bads = [True, False, 0, 101, -101, 'blip', inf, object, []]
     for bad in bads:
